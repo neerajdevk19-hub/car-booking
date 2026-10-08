@@ -1,0 +1,169 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                String          @id @default(uuid())
+  name              String
+  email             String          @unique
+  phone             String?
+  passwordHash      String
+  role              String          @default("CUSTOMER") // CUSTOMER, DRIVER, ADMIN
+  preferredLanguage String          @default("en")       // en, te
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  driver            Driver?
+  bookings          Booking[]       @relation("CustomerBookings")
+  conversations     Conversation[]
+  aiActionLogs      AIActionLog[]
+  savedLocations    SavedLocation[]
+}
+
+model Driver {
+  id                 String                 @id @default(uuid())
+  userId             String                 @unique
+  licenseNumber      String
+  availabilityStatus String                 @default("OFFLINE") // AVAILABLE, ON_TRIP, OFFLINE
+  verificationStatus String                 @default("VERIFIED") // PENDING, VERIFIED
+  currentLatitude    Float
+  currentLongitude   Float
+  lastLocationUpdate DateTime               @default(now())
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  user               User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vehicle            Vehicle?
+  bookings           Booking[]              @relation("DriverBookings")
+  locationHistory    DriverLocationHistory[]
+}
+
+model Vehicle {
+  id                 String    @id @default(uuid())
+  driverId           String    @unique
+  registrationNumber String
+  model              String
+  color              String
+  vehicleType        String    @default("SEDAN") // HATCHBACK, SEDAN, SUV, AUTO, PREMIUM
+  seatCapacity       Int       @default(4)
+  status             String    @default("ACTIVE")
+
+  driver             Driver    @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  bookings           Booking[]
+}
+
+model Booking {
+  id                       String              @id @default(uuid())
+  customerId               String
+  driverId                 String?
+  vehicleId                String?
+  pickupAddress            String
+  pickupLatitude           Float
+  pickupLongitude          Float
+  dropAddress              String
+  dropLatitude             Float
+  dropLongitude            Float
+  scheduledAt              DateTime            @default(now())
+  distanceKm               Float
+  estimatedDurationMinutes Int
+  estimatedFare            Float
+  finalFare                Float?
+  currency                 String              @default("INR")
+  status                   String              @default("PENDING_ASSIGNMENT") // DRAFT, PENDING_ASSIGNMENT, MATCHING, CONFIRMED, ARRIVED, IN_PROGRESS, COMPLETED, CANCELLED
+  confirmationToken        String?
+  createdAt                DateTime            @default(now())
+  updatedAt                DateTime            @updatedAt
+
+  customer                 User                @relation("CustomerBookings", fields: [customerId], references: [id])
+  driver                   Driver?             @relation("DriverBookings", fields: [driverId], references: [id])
+  vehicle                  Vehicle?            @relation(fields: [vehicleId], references: [id])
+  statusHistory            RideStatusHistory[]
+}
+
+model RideStatusHistory {
+  id             String   @id @default(uuid())
+  bookingId      String
+  previousStatus String?
+  newStatus      String
+  changedBy      String
+  timestamp      DateTime @default(now())
+
+  booking        Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+}
+
+model Conversation {
+  id                String    @id @default(uuid())
+  userId            String
+  preferredLanguage String    @default("en")
+  currentIntent     String?
+  bookingContext    String    @default("{}") // JSON string for draft pickup, drop, time, vehicle, state
+  pendingAction     String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages          Message[]
+  aiLogs            AIActionLog[]
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  role           String       // user, assistant, tool, system
+  content        String
+  toolName       String?
+  toolResult     String?
+  createdAt      DateTime     @default(now())
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+}
+
+model DriverLocationHistory {
+  id         String   @id @default(uuid())
+  driverId   String
+  latitude   Float
+  longitude  Float
+  recordedAt DateTime @default(now())
+
+  driver     Driver   @relation(fields: [driverId], references: [id], onDelete: Cascade)
+}
+
+model AIActionLog {
+  id             String        @id @default(uuid())
+  conversationId String?
+  userId         String
+  actionName     String
+  input          String
+  output         String
+  status         String        @default("SUCCESS") // SUCCESS, FAILED
+  createdAt      DateTime      @default(now())
+
+  user           User          @relation(fields: [userId], references: [id])
+  conversation   Conversation? @relation(fields: [conversationId], references: [id])
+}
+
+model SavedLocation {
+  id        String   @id @default(uuid())
+  userId    String
+  name      String   // e.g. "My Home", "Work Place", "Gym"
+  address   String
+  latitude  Float
+  longitude Float
+  category  String   @default("HOME") // HOME, WORK, OTHER
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PricingRule {
+  id            String @id @default(uuid())
+  vehicleType   String @unique // AUTO, HATCHBACK, SEDAN, SUV, PREMIUM
+  baseFare      Float
+  perKmRate     Float
+  perMinuteRate Float
+  minimumFare   Float
+}

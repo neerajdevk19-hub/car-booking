@@ -2,6 +2,7 @@
 # For permanent bookings, use a persistent database before production use.
 # Gemini is optional: add GEMINI_API_KEY in the backend's Render environment
 # to enable it; without a key, the built-in booking assistant still works.
+
 services:
   - type: web
     name: rideai-backend
@@ -9,23 +10,39 @@ services:
     plan: free
     region: singapore
     autoDeployTrigger: commit
+
     buildCommand: npm ci --include=dev && npm run db:generate && npm run build:backend
+
     startCommand: >-
       npm run db:push &&
       npm run db:seed --workspace=backend -- --if-empty &&
       npm run start --workspace=backend
+
     healthCheckPath: /health
+
     envVars:
       - key: NODE_VERSION
         value: "22"
+
       - key: NODE_ENV
         value: production
+
       - key: DATABASE_URL
         value: file:./render.db
+
       - key: JWT_SECRET
         generateValue: true
+
       - key: DEMO_MODE
         value: "true"
+
+      # Gemini AI configuration
+      - key: GEMINI_API_KEY
+        sync: false
+
+      - key: GEMINI_MODEL
+        value: "gemini-3.6-flash"
+
 
   - type: web
     name: rideai-frontend
@@ -33,16 +50,23 @@ services:
     plan: free
     region: singapore
     autoDeployTrigger: commit
+
     buildCommand: npm ci --include=dev && npm run build:frontend
+
     startCommand: npm run start --workspace=frontend -- -H 0.0.0.0 -p $PORT
+
     healthCheckPath: /
+
     envVars:
       - key: NODE_VERSION
         value: "22"
+
       - key: NODE_ENV
         value: production
+
       - key: NEXT_TELEMETRY_DISABLED
         value: "1"
+
       - key: NEXT_PUBLIC_API_URL
         fromService:
           type: web

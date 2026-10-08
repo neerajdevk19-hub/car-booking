@@ -5,6 +5,12 @@ import { SEED_CUSTOMERS, SEED_DRIVERS, SEED_PRICING_RULES } from '../src/data/se
 const prisma = new PrismaClient();
 
 async function main() {
+  // Render can restart the same instance; preserve any existing demo rides.
+  if (process.argv.includes('--if-empty') && await prisma.user.count() > 0) {
+    console.log('Database already initialized; skipping demo seed.');
+    return;
+  }
+
   console.log('🌱 Starting database seed...');
 
   // Clean existing tables

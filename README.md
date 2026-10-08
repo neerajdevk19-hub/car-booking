@@ -72,6 +72,30 @@ Testing is configured for the backend using **Vitest**. To run the test suite:
 npm run test
 ```
 
+## Deploy on Render
+
+The root `render.yaml` configures both services and automatically deploys new
+commits pushed to the connected Blueprint branch. Builds use the root npm
+workspace lockfile. Render generates the JWT secret and supplies the backend's
+public URL to the frontend, so no URLs need to be entered manually.
+
+1. Commit and push `render.yaml` and the accompanying seed/Next.js changes to GitHub.
+2. Open [Deploy to Render](https://render.com/deploy?repo=https://github.com/neerajdevk19-hub/car-booking),
+   sign in, select the repository branch, and create the Blueprint using `render.yaml`.
+3. Wait until `rideai-backend` and `rideai-frontend` are live, then open the
+   frontend URL shown by Render. Future pushes deploy automatically.
+
+The backend creates the SQLite schema at startup and seeds an empty database.
+The `--if-empty` seed option preserves existing demo data when initialization
+runs again. To enable Gemini, add `GEMINI_API_KEY` and optionally `GEMINI_MODEL`
+to the backend's environment in Render; without a key, the local assistant works.
+
+This is a public demo with simulated drivers and demo authentication. Do not use
+it for real customer data. Free services have ephemeral storage: SQLite bookings
+and conversations reset on redeploy, restart, or idle shutdown. For permanent
+storage, configure a persistent database or a paid service with a persistent disk.
+See [Render's free service limits](https://render.com/docs/free).
+
 ## Flow of the Project
 
 1. **Authentication:** User logs in/registers via the frontend. The backend issues a JWT token.
